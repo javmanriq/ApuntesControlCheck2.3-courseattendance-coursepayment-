@@ -1,0 +1,48 @@
+name: Java CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Permissions block is optional, useful for dependabot checks
+    permissions:
+      contents: read
+      actions: read
+      checks: write      
+      issues: read      
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Restore tests
+        run: git restore -s origin/feedback src/test/java/org/springframework/samples/petclinic/Test1.java src/test/java/org/springframework/samples/petclinic/Test2.java src/test/java/org/springframework/samples/petclinic/Test3.java src/test/java/org/springframework/samples/petclinic/Test4.java src/test/java/org/springframework/samples/petclinic/Test5.java src/test/java/org/springframework/samples/petclinic/Test6.java src/test/java/org/springframework/samples/petclinic/Test7.java src/test/java/org/springframework/samples/petclinic/Test8.java src/test/java/org/springframework/samples/petclinic/Test9.java frontend/src/course/CoursesListing.test.js      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+      - name: Build with Maven
+        run: mvn --batch-mode --update-snapshots verify      
+      - name: Setup Node 18
+        if: always()
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Node packages installation
+        if: always()
+        working-directory: ./frontend
+        run:  npm install      
+      - name: Publish Backend (JUnit) Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:          
+          name: JUnit Tests                  # Name of the check run which will be created
+          path: 'target/surefire-reports/*.xml'                     # Path to test results (inside artifact .zip)
+          reporter: java-junit
+          fail-on-error: 'false'                  
+      - name: Run frontend tests
+        if: always()
+        working-directory: ./frontend
+        run: CI=true npm run test -- --testResultsProcessor="jest-junit-reporter"
